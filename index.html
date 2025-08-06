@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>仕事の幸福度診断</title>
+  <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+  <style>
+    body { font-family: sans-serif; max-width: 800px; margin: 2em auto; padding: 0 1em; line-height: 1.6; }
+    h2 { margin-top: 2em; }
+    .question { margin: 1.2em 0; }
+    .result-box { border: 1px solid #ccc; padding: 1em; margin-top: 2em; background: #f9f9f9; }
+    .answers { font-size: 0.95em; white-space: pre-wrap; }
+    button { padding: 0.5em 1em; font-size: 1em; margin-top: 1em; }
+  </style>
+</head>
+<body>
+  <h1>仕事の幸福度診断</h1>
+  <form id="diagnosticForm">
+    <h2>I. 7つの徳目</h2>
+    <div id="virtues"></div>
+
+    <h2>II. 8つの悪</h2>
+    <div id="vices"></div>
+
+    <button type="submit">診断する</button>
+  </form>
+
+  <div id="result" class="result-box" style="display:none;"></div>
+  <button id="downloadImg" style="display:none;">📸 診断結果を画像で保存</button>
+
+  <script>
+    const virtues = [
+      ["自由", "自身の仕事の内容や進め方を、ある程度自由に決められる裁量権がありますか？"],
+      ["達成", "仕事を通じて目標を達成したと感じたり、前進している感覚がありますか？"],
+      ["焦点", "あなたのモチベーションタイプに現在の仕事が合っていますか？"],
+      ["明確", "仕事の目標や評価基準が明確に定まっていますか？"],
+      ["多様", "作業内容にバリエーションがあり、単調ではありませんか？"],
+      ["仲間", "困った時に助け合える信頼できる同僚がいますか？"],
+      ["貢献", "自分の仕事が社会や他人の役に立っていると実感できますか？"],
+    ];
+
+    const vices = [
+      ["ワークライフバランス崩壊", "プライベートが犠牲になっていると感じますか？"],
+      ["雇用が不安定", "現在の雇用に対して不安を感じていますか？"],
+      ["労働時間が長い", "過度な長時間労働が常態化していますか？"],
+      ["シフトワーク", "不規則なシフト勤務によって心身に負担を感じますか？"],
+      ["仕事の裁量権がない", "仕事の進め方に決定権がなく、常に指示待ちだと感じますか？"],
+      ["周囲からのサポートがない", "職場で孤立し、助けが得られないと感じますか？"],
+      ["組織内に不公平が多い", "評価や報酬に不公平を感じますか？"],
+      ["通勤時間が長い", "通勤が長く、ストレスや負担に感じていますか？"],
+    ];
+
+    function createQuestions(containerId, list, prefix) {
+      const container = document.getElementById(containerId);
+      list.forEach(([label, question], i) => {
+        const index = i + 1;
+        const html = `
+          <div class="question">
+            <strong>${index}. ${label}</strong><br>
+            ${question}<br>
+            <label><input type="radio" name="${prefix}${index}" value="2" required> はい</label>
+            <label><input type="radio" name="${prefix}${index}" value="1"> 部分的に当てはまる</label>
+            <label><input type="radio" name="${prefix}${index}" value="0"> いいえ</label>
+          </div>
+        `;
+        container.insertAdjacentHTML('beforeend', html);
+      });
+    }
+
+    createQuestions("virtues", virtues, "v");
+    createQuestions("vices", vices, "x");
+
+    document.getElementById("diagnosticForm").addEventListener("submit", function(e) {
+      e.preventDefault();
+      const form = new FormData(this);
+      let virtueScore = 0, viceScore = 0;
+      let virtueAnswers = "", viceAnswers = "";
+
+      virtues.forEach((item, i) => {
+        const val = form.get(`v${i+1}`);
+        virtueScore += parseInt(val);
+        const text = ["いいえ", "部分的に当てはまる", "はい"][val];
+        virtueAnswers += `${i+1}. ${item[0]}：${text}\n`;
+      });
+
+      vices.forEach((item, i) => {
+        const val = form.get(`x${i+1}`);
+        viceScore += parseInt(val);
+        const text = ["いいえ", "部分的に当てはまる", "はい"][val];
+        viceAnswers += `${i+1}. ${item[0]}：${text}\n`;
+      });
+
+      let resultMsg = "";
+      if (virtueScore >= 12 && viceScore <= 3) {
+        resultMsg = "🎉 あなたの仕事はとても幸福度が高く、リスクも低い理想的な環境です！";
+      } else if (virtueScore >= 9 && viceScore <= 6) {
+        resultMsg = "😊 比較的良好な職場環境です。改善の余地はありますが、安心して取り組めます。";
+      } else if (virtueScore < 7 && viceScore > 8) {
+        resultMsg = "⚠️ 幸福度が低く、リスクが高い職場かもしれません。注意が必要です。";
+      } else {
+        resultMsg = "🧐 一部に課題がありますが、全体としてはバランスが取れている可能性があります。";
+      }
+
+      const resultHTML = `
+        <h2>診断結果</h2>
+        <p>✅ 幸福度スコア：<strong>${virtueScore} / 14</strong></p>
+        <p>⚠️ リスクスコア：<strong>${viceScore} / 16</strong></p>
+        <p>${resultMsg}</p>
+        <hr>
+        <h3>あなたの回答一覧：</h3>
+        <div class="answers"><strong>【7つの徳目】</strong>\n${virtueAnswers}</div>
+        <div class="answers"><strong>【8つの悪】</strong>\n${viceAnswers}</div>
+      `;
+
+      const resultEl = document.getElementById("result");
+      resultEl.innerHTML = resultHTML;
+      resultEl.style.display = "block";
+      document.getElementById("downloadImg").style.display = "inline-block";
+    });
+
+    document.getElementById("downloadImg").addEventListener("click", () => {
+      html2canvas(document.getElementById("result")).then(canvas => {
+        const link = document.createElement("a");
+        link.href = canvas.toDataURL("image/png");
+        link.download = "診断結果.png";
+        link.click();
+      });
+    });
+  </script>
+</body>
+</html>
